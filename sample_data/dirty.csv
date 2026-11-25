@@ -1,0 +1,9 @@
+﻿sample_id,study_id,collected_at,retention_months,consent_until,legal_hold,disposed_at,storage
+S1,N1,2025-01-31,12,,N,2026-03-10,-80C
+S7,N4,2025-01-31,12,,N,2026-01-01,-80C
+S8,N4,2024-01-01,12,,Y,2025-01-10,LN2
+S9,N4,2020-01-01,1,,N,,4C
+S10,N4,2026-09-31,1,,N,,4C
+S11,N4,2026-01-01,-1,,N,,4C
+
+S1,N1,2025-01-31,12,,N,2026-03-10,-80C,surplus
