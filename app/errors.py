@@ -18,6 +18,7 @@ MESSAGES = {
     "GATE_BLOCKED": "存在阻断项，不能签发",
     "NOT_APPROVED": "批次尚未签发",
     "BAD_REQUEST": "请求内容不完整",
+    "WO_BOARD_NOT_FOUND": "核销台账不存在",
 }
 
 

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>交接单核销核对 · 样品留存处置台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='writeoff.css') }}">
+</head>
+<body class="p0846 layout-archive">
+<div class="shell">
+  <nav class="rail" aria-label="导航">
+    <a class="brand" href="/" aria-label="返回工作台">留样</a>
+    <p class="rail-label">核对工具</p>
+    <div id="stage-nav">
+      <a href="/"><button type="button">留存处置工作台</button></a>
+      <a href="/writeoff"><button type="button" aria-pressed="true">交接单核销核对</button></a>
+    </div>
+    <p class="rail-note">回执随到随结 · 更正留痕</p>
+  </nav>
+
+  <div class="work">
+    <header class="toolbar">
+      <div>
+        <p class="actor">库房核销岗</p>
+        <h1>按交接单核对核销结果</h1>
+      </div>
+      <div class="tools">
+        <span class="rule-chip">回执陆续到 · 单内样品随到随结</span>
+        <label>场景
+          <select id="scenario-select">
+            {% for s in scenarios %}
+            <option value="{{ s.name }}" {% if s.name == 'standard' %}selected{% endif %}>{{ s.title or s.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button id="reload-final" type="button">查看最终核对</button>
+      </div>
+    </header>
+
+    <main>
+      {% set board = initial.board if initial else None %}
+      {% set t = board.totals if board else None %}
+      <section class="wo-kpis" aria-label="核销总览">
+        <div class="metric"><span>交接单</span><strong id="k-orders">{{ t.orders if t else '–' }}</strong></div>
+        <div class="metric"><span>样品总数</span><strong id="k-samples">{{ t.samples if t else '–' }}</strong></div>
+        <div class="metric" data-tone="ok"><span>已核销 / 结清</span><strong id="k-settled">{{ t.settled if t else '–' }}</strong></div>
+        <div class="metric" data-tone="review"><span>退回待核</span><strong id="k-pending">{{ t.pending if t else '–' }}</strong></div>
+        <div class="metric" data-tone="block"><span>不可销账</span><strong id="k-blocked">{{ t.blocked if t else '–' }}</strong></div>
+        <div class="metric" data-tone="wait"><span>待回执</span><strong id="k-waiting">{{ t.waiting if t else '–' }}</strong></div>
+      </section>
+
+      <section class="panel" style="grid-column:1/-1">
+        <div class="panel-head">
+          <h2>回执到达过程</h2>
+          <span class="hint" id="scenario-desc">{{ initial.description if initial else '' }}</span>
+        </div>
+        <div class="wo-stepbar">
+          <button id="step-prev" type="button">上一张</button>
+          <button id="step-next" type="button" class="primary">投递下一张回执</button>
+          <button id="step-reset" type="button">从头开始</button>
+          <button id="step-final" type="button">直接看最终结果</button>
+          <span class="wo-progress" id="step-progress">{{ arrivals|length }} / {{ arrivals|length }}</span>
+        </div>
+        <ol class="wo-timeline" id="timeline">
+          {% for a in arrivals %}
+          {% set is_corr = a.kind == 'correction' or a.kind == '更正' or a.replaces %}
+          <li data-on="true">
+            <span class="wo-tl-id">{{ a.receipt_id }}</span>
+            <span class="wo-tl-tag" data-k="{{ 'CORRECTION' if is_corr else 'RECEIPT' }}">{{ '更正' if is_corr else '回执' }}</span>
+            · {{ a.sample_id }} · {{ a.disposed_at }}
+            {% if a.replaces %} → 替换 {{ a.replaces|join(', ') }}{% endif %}
+            {% if a.note %}<span class="wo-tl-note">{{ a.note }}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <div class="wo-layout" style="grid-column:1/-1">
+        <section class="wo-orders" id="orders" aria-label="按交接单的核销结果">
+          {% if board %}
+          {% for o in board.orders %}
+          <article class="wo-order">
+            <div class="wo-order-head">
+              <h3>{{ o.order_id }}</h3>
+              <span class="wo-order-counts">共 {{ o.counts.samples }} · 已核 {{ o.counts.settled }} · 待核 {{ o.counts.pending }} · 阻断 {{ o.counts.blocked }} · 待回执 {{ o.counts.waiting }}</span>
+            </div>
+            <table>
+              <thead><tr><th>样品 / 回执留痕</th><th>核销状态</th><th>报告处置日</th><th>留存截止</th></tr></thead>
+              <tbody>
+              {% for s in o.samples %}
+                <tr>
+                  <td>
+                    <span class="wo-sid">{{ s.sample_id }}</span>
+                    <div class="wo-reason">
+                      {%- if s.disputed -%}不同回执报告了不同处置日，已结清也退回待核
+                      {%- elif s.block_reason == 'LEGAL_HOLD' -%}保全标记优先，处置被阻止，不能销账
+                      {%- elif s.block_reason in ['RETENTION_NOT_DUE','RETAIN_ON_DISPOSAL_DAY'] -%}处置当天仍须留存，不能销账
+                      {%- elif s.state == 'AWAITING_RECEIPT' -%}回执未到，暂不核销{% endif -%}
+                    </div>
+                    <div class="wo-chips">
+                      {% for r in s.receipts %}
+                      {% set cls = 'effective' if r.status == 'effective' else ('ineffective' if r.status == 'ineffective' else ('superseded' if r.status == 'superseded' else ('active' if r.receipt_id in s.active_receipt_ids else ''))) %}
+                      <span class="wo-chip" data-r="{{ cls }}" title="{{ r.kind }} {{ r.disposal_date or '无日期' }} · {{ r.status }}">{{ r.receipt_id }}</span>
+                      {% endfor %}
+                    </div>
+                  </td>
+                  <td><span class="wo-badge" data-s="{{ s.state }}">{{ s.state_label }}</span></td>
+                  <td><span class="wo-date">{{ s.disposal_date or '—' }}</span></td>
+                  <td><span class="wo-due">{{ s.retention_due or '未提供' }}</span></td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </article>
+          {% endfor %}
+          {% endif %}
+        </section>
+
+        <aside class="wo-side">
+          <div class="wo-panel">
+            <h2>回执投递台（交互台账）</h2>
+            <form class="wo-form" id="receipt-form">
+              <label>回执编号
+                <input name="receipt_id" id="f-rid" value="HS-LIVE-001" required>
+              </label>
+              <div class="wo-row2">
+                <label>交接单
+                  <select name="order_id" id="f-order">
+                    {% for o in board.orders if board %}
+                    <option value="{{ o.order_id }}">{{ o.order_id }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>样品
+                  <select name="sample_id" id="f-sample"></select>
+                </label>
+              </div>
+              <label>报告处置日
+                <input name="disposed_at" id="f-date" type="date" value="2026-11-22">
+              </label>
+              <label class="wo-check">
+                <input type="checkbox" id="f-is-correction"> 这是一张更正（替换下列回执）
+              </label>
+              <label>替换的回执编号（逗号分隔，更正须列全冲突回执）
+                <input name="replaces" id="f-replaces" placeholder="HS-A02-1, HS-A02-2">
+              </label>
+              <div class="wo-actions">
+                <button type="submit" class="primary">登记回执</button>
+                <button type="button" id="retry-last">重发同张回执</button>
+                <button type="button" id="live-reset">清空交互台账</button>
+              </div>
+              <p class="wo-flash" id="flash" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+
+          <div class="wo-panel">
+            <h2>核对口径</h2>
+            <ul class="wo-rules">
+              <li><b>随到随结：</b>单内对得上且可处置的样品，回执到一张结一件，不必等齐。</li>
+              <li><b>日期冲突：</b>同样品出现不同处置日，已结清也退回<b>待核</b>；同单其他样品照常结清。</li>
+              <li><b>更正：</b>必须指明所替换的<b>全部冲突回执</b>才消除争议；被指明的旧回执晚到也不能翻案。</li>
+              <li><b>留存阻断：</b>处置当天仍在留存期（含截止日当天）或处于保全状态的样品不能销账。</li>
+              <li><b>幂等：</b>同一回执编号重试只登记一次。</li>
+            </ul>
+          </div>
+
+          <div class="wo-panel">
+            <h2>对不上的回执 / 异常</h2>
+            <ul class="wo-exceptions" id="exceptions">
+              {% if board and board.exceptions %}
+                {% for e in board.exceptions %}
+                <li><code>{{ e.code }}</code> 回执 {{ e.receipt_id }}{% if e.sample_id %} · 样品 {{ e.sample_id }}{% endif %}</li>
+                {% endfor %}
+              {% else %}
+                <li class="empty">无</li>
+              {% endif %}
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="notice" class="notice"></span>
+      <span>交接单核销 · 本地核对</span>
+      <span>0846 · 留样</span>
+    </footer>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='writeoff.js') }}"></script>
+</body>
+</html>

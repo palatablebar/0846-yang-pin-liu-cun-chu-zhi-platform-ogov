@@ -1,0 +1,60 @@
+{
+  "name": "standard",
+  "title": "交接单核销标准场景",
+  "as_of": "2026-11-25",
+  "description": "覆盖随到随结、同品不同处置日退回待核、更正替换全部冲突回执、晚到旧回执不翻案、处置当天留存阻断与同张回执幂等重试。",
+  "orders": [
+    {
+      "order_id": "JD-2026-11",
+      "handover_date": "2026-11-03",
+      "samples": [
+        {"sample_id": "YP-A01", "storage": "-80C", "collected_at": "2025-11-10", "retention_months": 12},
+        {"sample_id": "YP-A02", "storage": "-80C", "collected_at": "2025-01-31", "retention_months": 12},
+        {"sample_id": "YP-A03", "storage": "LN2", "collected_at": "2025-05-01", "retention_months": 12},
+        {"sample_id": "YP-A04", "storage": "4C", "collected_at": "2025-11-30", "retention_months": 12},
+        {"sample_id": "YP-A04B", "storage": "4C", "collected_at": "2025-11-20", "retention_months": 12},
+        {"sample_id": "YP-A04C", "storage": "4C", "collected_at": "2025-11-20", "retention_months": 12},
+        {"sample_id": "YP-A05", "storage": "-80C", "collected_at": "2025-01-10", "retention_months": 12},
+        {"sample_id": "YP-A06", "storage": "-80C", "collected_at": "2025-05-01", "retention_months": 12},
+        {"sample_id": "YP-A07", "storage": "-80C", "collected_at": "2024-06-01", "retention_months": 12}
+      ]
+    },
+    {
+      "order_id": "JD-2026-12",
+      "handover_date": "2026-11-05",
+      "samples": [
+        {"sample_id": "YP-B01", "storage": "LN2", "collected_at": "2024-01-01", "retention_months": 6, "legal_hold": "Y"},
+        {"sample_id": "YP-B02", "storage": "-80C", "collected_at": "2024-03-01", "retention_months": 12},
+        {"sample_id": "YP-B03", "storage": "4C", "collected_at": "2026-10-31", "retention_months": 12}
+      ]
+    }
+  ],
+  "arrivals": [
+    {"receipt_id": "HS-A01-1", "order_id": "JD-2026-11", "sample_id": "YP-A01", "disposed_at": "2026-11-15", "note": "A01 首张回执，随到随结"},
+    {"receipt_id": "HS-A01-1", "order_id": "JD-2026-11", "sample_id": "YP-A01", "disposed_at": "2026-11-15", "note": "同张回执网络重试，不得重复登记"},
+
+    {"receipt_id": "HS-A02-1", "order_id": "JD-2026-11", "sample_id": "YP-A02", "disposed_at": "2026-11-18", "note": "A02 先到的处置日 11-18，已结清"},
+    {"receipt_id": "HS-A02-2", "order_id": "JD-2026-11", "sample_id": "YP-A02", "disposed_at": "2026-11-19", "note": "A02 又报 11-19，处置日冲突，退回待核"},
+    {"receipt_id": "GZ-A02-1", "kind": "correction", "order_id": "JD-2026-11", "sample_id": "YP-A02", "disposed_at": "2026-11-18", "replaces": ["HS-A02-1"], "note": "只指明一张冲突回执，争议不消除"},
+    {"receipt_id": "GZ-A02-2", "kind": "correction", "order_id": "JD-2026-11", "sample_id": "YP-A02", "disposed_at": "2026-11-18", "replaces": ["HS-A02-1", "HS-A02-2"], "note": "指明全部冲突回执，更正生效"},
+    {"receipt_id": "HS-A02-2", "order_id": "JD-2026-11", "sample_id": "YP-A02", "disposed_at": "2026-11-19", "note": "旧回执重复投递，不能推翻更正"},
+
+    {"receipt_id": "HS-A03-1", "order_id": "JD-2026-11", "sample_id": "YP-A03", "disposed_at": "2026-11-20", "note": "同单 A03 不受 A02 争议影响，照常结清"},
+
+    {"receipt_id": "HS-A04-1", "order_id": "JD-2026-11", "sample_id": "YP-A04", "disposed_at": "2026-11-05", "note": "处置日早于留存截止 11-30，仍须留存，不能销账"},
+    {"receipt_id": "HS-A04B-1", "order_id": "JD-2026-11", "sample_id": "YP-A04B", "disposed_at": "2026-11-20", "note": "处置日恰为留存截止日，当天仍须留存，不能销账"},
+    {"receipt_id": "HS-A04C-1", "order_id": "JD-2026-11", "sample_id": "YP-A04C", "disposed_at": "2026-11-21", "note": "留存截止次日处置，可以销账"},
+
+    {"receipt_id": "HS-A06-1", "order_id": "JD-2026-11", "sample_id": "YP-A06", "disposed_at": "2026-11-10", "note": "A06 原回执"},
+    {"receipt_id": "GZ-A06-1", "kind": "correction", "order_id": "JD-2026-11", "sample_id": "YP-A06", "disposed_at": "2026-11-12", "replaces": ["HS-A06-1", "HS-A06-OLD"], "note": "更正预先指明尚未到达的旧回执 HS-A06-OLD"},
+    {"receipt_id": "HS-A06-OLD", "order_id": "JD-2026-11", "sample_id": "YP-A06", "disposed_at": "2026-11-08", "note": "晚到的旧回执，已被更正替换，不得翻案"},
+
+    {"receipt_id": "HS-A07-1", "order_id": "JD-2026-11", "sample_id": "YP-A07", "disposed_at": "2026-11-16"},
+    {"receipt_id": "HS-A07-2", "order_id": "JD-2026-11", "sample_id": "YP-A07", "disposed_at": "2026-11-17", "note": "A07 冲突保留待核，不再更正"},
+
+    {"receipt_id": "HS-B01-1", "order_id": "JD-2026-12", "sample_id": "YP-B01", "disposed_at": "2026-11-18", "note": "保全标记优先，不能销账"},
+    {"receipt_id": "HS-B02-1", "order_id": "JD-2026-12", "sample_id": "YP-B02", "disposed_at": "2026-11-18"},
+
+    {"receipt_id": "HS-GHOST-1", "sample_id": "YP-GHOST", "disposed_at": "2026-11-18", "note": "对不上任何交接单样品，列为异常"}
+  ]
+}

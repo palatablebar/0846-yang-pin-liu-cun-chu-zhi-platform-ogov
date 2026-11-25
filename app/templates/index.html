@@ -2,6 +2,27 @@
 {% import "widgets.html" as ui %}
 {% block content %}
 <main>
+  {% if wo %}
+  <section class="panel" id="wo-home-summary" style="grid-column:1/-1;border-left:5px solid var(--accent);">
+    <div class="panel-head">
+      <h2>交接单核销核对</h2>
+      <span class="hint"><a href="/writeoff">进入核销工作台 →</a></span>
+    </div>
+    <p class="hint" style="margin:0 0 8px;">
+      标准场景：{{ wo.totals.orders }} 张交接单 · {{ wo.totals.samples }} 个样品 ·
+      已核销 {{ wo.totals.settled }} · 待核 {{ wo.totals.pending }} ·
+      不可销账 {{ wo.totals.blocked }} · 待回执 {{ wo.totals.waiting }}
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {% for o in wo.orders %}
+      <a href="/writeoff" style="text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:var(--radius);padding:6px 10px;background:var(--soft);">
+        <b style="font-family:var(--font-num);">{{ o.order_id }}</b>
+        <span class="hint" style="margin-left:6px;">已核 {{ o.counts.settled }}/{{ o.counts.samples }} · 待核 {{ o.counts.pending }} · 阻断 {{ o.counts.blocked }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   <section class="kpis" aria-label="关键指标">
     {{ ui.metric("m-input", "来源行") }}
     {{ ui.metric("m-accepted", "采信行") }}

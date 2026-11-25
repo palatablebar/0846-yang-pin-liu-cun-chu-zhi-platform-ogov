@@ -19,3 +19,17 @@
 ## 批次
 
 同一来源重复执行得到同一批次数值。签发要求阻断项为零，并携带当前版本号；旧版本提交会被拒绝。证据只在签发后生成。
+
+## 交接单核销（处置回执核对）
+
+库房按交接单核销处置回执，工作台 `/writeoff` 与 `app/writeoff/` 实现以下口径：
+
+1. **随到随结**：回执陆续到达，单内对得上交接单行的样品，凭一张有效回执即可核销，不必等齐同单其他样品。
+2. **处置日冲突**：同一样品存在两张（含）以上未被替换、且报告不同处置日的回执时，判定日期冲突；即使此前已结清，也退回 `PENDING_VERIFICATION`（待核）。冲突只影响该样品，同交接单其他样品照常结清。
+3. **更正与争议消除**：更正必须在 `replaces` 中指明当前全部冲突回执，才会生效并消除争议；只替换其中一部分的更正记为 `ineffective`，争议保留。生效更正点名的回执编号进入替换名册，即使对应旧回执「晚到」（甚至在更正之后才首次到达），也只留痕为 `superseded`，不能推翻更正。未被更正点名的新冲突回执仍会重新打开待核。
+4. **处置当天留存阻断**：处置日当天仍负留存义务的样品不能销账。留存截止日为最后一个仍须留存的日期（含当天，处置日 `<= 留存截止` 即阻断）；同意截止可缩短期限；保全（legal hold）标记优先，任何日期都阻断。
+5. **幂等**：同一回执编号重试不重复登记。HTTP 层以 `(board_id, receipt_id)` 主键与 `ON CONFLICT DO NOTHING` 保证并发重试也只入账一次。
+
+样品核销状态：`SETTLED`（已核销/已结清）、`PENDING_VERIFICATION`（待核）、`AWAITING_RECEIPT`（待回执）、`BLOCKED_RETENTION`（留存期内不可销账）、`BLOCKED_HOLD`（保全中不可销账）。粗粒度桶分别为 `SETTLED / PENDING / WAITING / BLOCKED`，并附中文 `state_label`。
+
+留存截止可取显式 `retain_through / retention_due / due` 等字段，也可由 `collected_at + retention_months`（月末夹紧）与 `consent_until` 推导，与主计算层口径一致。标准场景见 `sample_data/writeoff/standard.json`。
